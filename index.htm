@@ -1,0 +1,141 @@
+<html>
+    <head>
+        <title>Book Search</title>
+        <style>
+            a{
+                color:black;
+                text-decoration: none;
+            }
+            a:active{
+                color:gray;
+            }
+            img {
+                float: left;
+                padding-right:10px;
+            }
+            .book::after {
+                content: "";
+                clear: both;
+                display: table;
+            }
+        </style>
+        <script>
+            let text_ele = null
+            let error_ele = null
+            let results_ele = null
+            let last_query = ""
+            if (window.XMLHttpRequest) {
+                httpRequest = new XMLHttpRequest();
+            } else if (window.ActiveXObject) {
+                httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            
+            let apikey = "AIzaSyD3OuRps5MEE6PrFzuY9_hAzHeO1mbZ3cA"
+            let addon = false
+            let addon_index = 0
+            function show_error(e){
+                error_ele.innerText = e
+            }
+            function clear_error(){
+                error_ele.innerText = ""
+            }
+            function google_search(q){
+                last_query = q
+                let query = encodeURI(q)
+                let request = "https://www.googleapis.com/books/v1/volumes?q="+query+"&key=AIzaSyD3OuRps5MEE6PrFzuY9_hAzHeO1mbZ3cA&startIndex="+addon_index
+                httpRequest.open('GET', request, true);
+                httpRequest.send();
+            }
+            
+            function submit_form(e){
+                let search_term = text_ele.value
+                if(search_term.length <= 0){
+                    show_error("Invalid Input - Nothing Entered!")
+                    return false
+                }
+                results_ele.innerText = "Loading Results ..."
+                addon = false
+                addon_index = 0
+                google_search(search_term)
+                clear_error()
+                return false
+            }
+            function load_more(){
+                console.log("loading more")
+                addon = true
+                if(addon_index==0){
+                    addon_index=1
+                }
+                addon_index+=10
+                google_search(last_query)
+                return false;
+            }
+            window.onload = function(){
+                text_ele = document.getElementById("text_input_id")
+                error_ele = document.getElementById('error_text_id')
+                results_ele = document.getElementById('results_id')
+                document.getElementById("text_form_id").onsubmit = function(e){
+                    submit_form(e)
+                }
+            }
+            httpRequest.onreadystatechange = function(){
+                if (httpRequest.readyState === XMLHttpRequest.DONE) {
+                    if (httpRequest.status === 200) {
+                        obj = JSON.parse(httpRequest.responseText);
+                        let new_html = "<hr/>"
+                        if(addon){
+                            let load_more_ele = results_ele.getElementsByTagName("center")[0];
+                            results_ele.removeChild(load_more_ele);
+                        }else{
+                            results_ele.innerText = ""
+                            new_html = "Results: "+obj.totalItems+"<br/><br/>"
+                        }
+                        for (var i in obj.items) {
+                            new_html += "<a href='"+obj.items[i].volumeInfo.infoLink+"' target='_blank'><div class='book'>"
+                            if(obj.items[i].volumeInfo.imageLinks !== undefined && obj.items[i].volumeInfo.imageLinks.smallThumbnail !== undefined){
+                                new_html += "<img src='"+obj.items[i].volumeInfo.imageLinks.smallThumbnail+"' alt='Book Image' />"
+                            }
+                            new_html += "<h2>"+obj.items[i].volumeInfo.title+"</h2>"
+                            if(obj.items[i].volumeInfo.authors !== undefined){
+                                new_html += "Author(s): "+obj.items[i].volumeInfo.authors.join(', ')+"<br/>"
+                            }
+                            if(obj.items[i].volumeInfo.publisher !== undefined){
+                                new_html += "Publisher: "+obj.items[i].volumeInfo.publisher+"<br/>"
+                            }
+                            new_html += "</div></a><br/>"
+                            if(i < obj.items.length-1){
+                                new_html += '<hr/>'
+                            }
+                        }
+                        if(addon_index < obj.totalItems){
+                            new_html += '<center><a style="color:#7777ff;font-weight:900;font-size:30px;border:1px dotted black;padding:5px" href="javascript:void(0);" onclick="load_more()">Load More</a></center>'
+                        }
+                        results_ele.innerHTML += new_html
+                        
+                    } else {
+                        show_error('There was a problem with the request.');
+                    }
+                }
+            };
+            httpRequest.timeout = 5000
+            httpRequest.ontimeout = function (e) {
+                show_error("Request Timedout. Please try again.")
+            };
+        </script>
+    </head>
+    <body >
+        <h1 style="color:gray">Book Search Utility</h1>
+        <div style="font-size:30px;padding-top:10px;">
+            <center>
+                <form id="text_form_id">
+                    <input id="text_input_id" type="text" value="" style="font-size:30px;"/>
+                    <a href="#" onclick="submit_form()">Search</a><br/>
+                    <div id="error_text_id" style="font-size:.75em;color:red;"></div>
+                </form>
+            </center>
+        </div>
+        <div id="results_id" style="border:1px solid gray;width:auto;display:block;margin:0px;padding:20px;">
+            Search for something.....
+        </div>
+    </body>
+</html>
